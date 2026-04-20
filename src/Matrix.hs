@@ -1,4 +1,20 @@
-module Matrix (Mat (Mat), size, square, matRows, matCols, matPlus, matMul, scalarAdd, scalarMul, matTrans, kronecker, fromBlocks) where
+module Matrix
+  ( Mat (Mat),
+    size,
+    square,
+    matRows,
+    matCols,
+    matPlus,
+    matMul,
+    scalarAdd,
+    scalarMul,
+    matTrans,
+    kronecker,
+    fromBlocks,
+    idMat,
+    zeroMat,
+  )
+where
 
 import Algebra
 import Data.List (intercalate, transpose)
@@ -75,12 +91,12 @@ kronecker (Mat a) m = fromBlocks $ map (map (\x -> scalarMul x m)) a
 
 ---
 
--- idMat :: Int -> Mat
--- idMat x
---   | x >= 0 = Mat [[ELit (if i == j then 1 else 0) | i <- [1 .. x]] | j <- [1 .. x]]
---   | otherwise = error "Cannot construct a negative-sized matrix"
+idMat :: Int -> Mat
+idMat x
+  | x >= 0 = Mat [[AEVal (if i == j then 1 else 0) | i <- [1 .. x]] | j <- [1 .. x]]
+  | otherwise = error "Cannot construct a negative-sized matrix"
 
--- zeroMat :: Int -> Mat
--- zeroMat x
---   | x >= 0 = Mat [[ELit 0 | _ <- [1 .. x]] | _ <- [1 .. x]]
---   | otherwise = error "Cannot construct a negative-sized matrix"
+zeroMat :: Int -> Mat
+zeroMat x
+  | x >= 0 = Mat [[AEVal 0 | _ <- [1 .. x]] | _ <- [1 .. x]]
+  | otherwise = error "Cannot construct a negative-sized matrix"

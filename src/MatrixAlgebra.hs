@@ -1,4 +1,4 @@
-module MatrixAlgebra (MExpr (MEVal, MEOp, MEExprOp, MEBlocks), MatOp (MatPlus, MatTimes, MatKronecker), munch, EMat (EMat)) where
+module MatrixAlgebra (MExpr (MEVal, MEOp, MEExprOp, MEBlocks), MatOp (MatPlus, MatTimes, MatKronecker), evalMExpr, munch, EMat (EMat), (*^*)) where
 
 import Algebra
 import Data.List (intercalate, intersperse, transpose)
@@ -26,6 +26,9 @@ instance Num MExpr where
   abs = error "Not implemented"
   signum = error "Not implemented"
   fromInteger = error "Not Implemented"
+
+(*^*) :: MExpr -> MExpr -> MExpr
+a *^* b = MEOp MatKronecker [a, b]
 
 instance ShowLines MExpr where
   toLines (MEVal m) = toLines m
