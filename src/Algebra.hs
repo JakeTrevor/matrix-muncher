@@ -1,28 +1,43 @@
 {-# LANGUAGE InstanceSigs #-}
 
-module Algebra (Expr (EVar, ELit, EBOp), BOp (OPlus, OTimes), toSNF, SNF, SNFTerm, eval) where
+module Algebra (AExpr (AEVar, AEVal, AEBOp), BOp (OPlus, OTimes), toSNF, SNF (SNF), SNFTerm (SNFTerm), eval) where
 
 import Data.Complex
-import Data.List (intercalate, sort, sortOn)
+import Data.List (sort, sortOn)
 import Data.Semigroup (Semigroup (sconcat))
+import Lib
 
 type CR = Complex Double
 
 -- Raw Expressions
 data BOp = OPlus | OTimes
 
-data Expr
-  = EVar String
-  | ELit CR
-  | EBOp BOp [Expr]
+instance Show BOp where
+  show OPlus = " + "
+  show OTimes = " * "
 
-instance Show Expr where
-  show (EVar s) = s
-  show (ELit i) = show i
-  show (EBOp OPlus xs) = "(" ++ intercalate " + " (map show xs) ++ ")"
-  show (EBOp OTimes xs) = "(" ++ intercalate " * " (map show xs) ++ ")"
+-- 'Algebra' expression
+data AExpr
+  = AEVar String
+  | AEVal CR
+  | AEBOp BOp [AExpr]
 
---
+instance Show AExpr where
+  show (AEVar s) = s
+  show (AEVal (i :+ 0)) = show i
+  show (AEVal (0 :+ i)) = ":+" ++ show i
+  show (AEVal i) = show i
+  show (AEBOp _ []) = ""
+  show (AEBOp op xs) = "(" ++ intercalateMap (show op) show xs ++ ")"
+
+instance Num AExpr where
+  (+) a b = AEBOp OPlus [a, b]
+  (*) a b = AEBOp OTimes [a, b]
+  abs _ = error "broke"
+  signum _ = error "broke"
+  negate x = AEBOp OTimes [-1, x]
+
+  fromInteger x = AEVal (fromIntegral x :+ 0)
 
 -- Sum Normal form terms
 data SNFTerm = SNFTerm CR [String]
@@ -31,7 +46,7 @@ instance Show SNFTerm where
   show (SNFTerm (i :+ 0) []) = show i
   show (SNFTerm i []) = show i
   show (SNFTerm (1 :+ 0) vs) = concat vs
-  show (SNFTerm (x :+ 0) vs) = show x ++ concat vs
+  show (SNFTerm (i :+ 0) vs) = show i ++ concat vs
   show (SNFTerm i vs) = show i ++ concat vs
 
 data SNF = SNF [SNFTerm]
@@ -44,7 +59,7 @@ instance Monoid SNF where
   mempty = SNF []
 
 instance Show SNF where
-  show (SNF xs) = intercalate " + " $ map show xs
+  show (SNF xs) = intercalateMap " + " show xs
 
 multiply :: SNFTerm -> SNFTerm -> SNFTerm
 multiply (SNFTerm ai avs) (SNFTerm bi bvs) = SNFTerm (ai * bi) (avs ++ bvs)
@@ -52,11 +67,11 @@ multiply (SNFTerm ai avs) (SNFTerm bi bvs) = SNFTerm (ai * bi) (avs ++ bvs)
 expand :: SNF -> SNF -> SNF
 expand (SNF as) (SNF bs) = SNF [multiply a b | a <- as, b <- bs]
 
-toSNF :: Expr -> SNF
-toSNF (EVar s) = SNF [SNFTerm 1 [s]]
-toSNF (ELit i) = SNF [SNFTerm i []]
-toSNF (EBOp OPlus es) = foldMap toSNF es
-toSNF (EBOp OTimes es) =
+toSNF :: AExpr -> SNF
+toSNF (AEVar s) = SNF [SNFTerm 1 [s]]
+toSNF (AEVal i) = SNF [SNFTerm i []]
+toSNF (AEBOp OPlus es) = foldMap toSNF es
+toSNF (AEBOp OTimes es) =
   let es' = map toSNF es
    in case es' of
         [] -> SNF []
@@ -81,10 +96,11 @@ collect (x@(SNFTerm i xs) : y@(SNFTerm j ys) : rest)
   | xs == ys = collect $ (SNFTerm (i + j) ys) : rest
   | otherwise = x : collect (y : rest)
 
+-- Reduced SNF - i.e. after collecting like terms
 toRSNF :: SNF -> SNF
 toRSNF s =
   let (SNF p) = normaliseSNF s
    in SNF $ collect p
 
-eval :: Expr -> SNF
+eval :: AExpr -> SNF
 eval = toRSNF . toSNF
