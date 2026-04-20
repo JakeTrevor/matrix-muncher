@@ -23,6 +23,10 @@ library
   exposed-modules:
       Algebra
       Matrix
+      MatrixAlgebra
+      Quantum
+      Typst
+      Lib
   other-modules:
       Paths_matrix_muncher
   autogen-modules:
