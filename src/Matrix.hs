@@ -9,6 +9,7 @@ module Matrix
     scalarAdd,
     scalarMul,
     matTrans,
+    conjTrans,
     kronecker,
     fromBlocks,
     idMat,
@@ -17,6 +18,7 @@ module Matrix
 where
 
 import Algebra
+import Data.Complex (conjugate)
 import Data.List (intercalate, transpose)
 import Data.Monoid (All (All, getAll))
 import Lib
@@ -76,6 +78,9 @@ scalarAdd e (Mat m) = Mat $ map (map (\e' -> AEBOp OPlus [e, e'])) m
 
 matTrans :: Mat -> Mat
 matTrans (Mat m) = Mat $ transpose m
+
+conjTrans :: Mat -> Mat
+conjTrans (Mat m) = Mat $ map (map AEConj) $ transpose m
 
 concatRows :: Mat -> Mat -> Mat
 concatRows (Mat m1) (Mat m2) = Mat $ map (uncurry (++)) $ zip m1 m2

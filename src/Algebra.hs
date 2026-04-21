@@ -1,6 +1,4 @@
-{-# LANGUAGE InstanceSigs #-}
-
-module Algebra (AExpr (AEVar, AEVal, AEBOp), BOp (OPlus, OTimes), toSNF, SNF (SNF), SNFTerm (SNFTerm), eval) where
+module Algebra (AExpr (AEVar, AEVal, AEBOp, AEConj), BOp (OPlus, OTimes), toSNF, SNF (SNF), SNFTerm (SNFTerm), eval) where
 
 import Data.Complex
 import Data.List (sort, sortOn)
@@ -21,8 +19,10 @@ data AExpr
   = AEVar String
   | AEVal CR
   | AEBOp BOp [AExpr]
+  | AEConj AExpr
 
 instance Show AExpr where
+  show (AEConj s) = "*(" ++ show s ++ ")"
   show (AEVar s) = s
   show (AEVal (i :+ 0)) = show i
   show (AEVal (0 :+ i)) = ":+" ++ show i
@@ -38,6 +38,13 @@ instance Num AExpr where
   negate x = AEBOp OTimes [-1, x]
 
   fromInteger x = AEVal (fromIntegral x :+ 0)
+
+conjugateAExpr :: AExpr -> AExpr
+conjugateAExpr (AEConj x) = x
+conjugateAExpr (AEVal (a :+ b)) = AEVal (a :+ (-b))
+conjugateAExpr (AEVar ('*' : x)) = AEVar x
+conjugateAExpr (AEVar (x)) = AEVar $ '*' : x
+conjugateAExpr (AEBOp op xs) = AEBOp op $ map conjugateAExpr xs
 
 -- Sum Normal form terms
 data SNFTerm = SNFTerm CR [String]
@@ -55,7 +62,6 @@ instance Semigroup SNF where
   sconcat xs = SNF $ concatMap (\(SNF x) -> x) xs
 
 instance Monoid SNF where
-  mempty :: SNF
   mempty = SNF []
 
 instance Show SNF where
@@ -68,6 +74,7 @@ expand :: SNF -> SNF -> SNF
 expand (SNF as) (SNF bs) = SNF [multiply a b | a <- as, b <- bs]
 
 toSNF :: AExpr -> SNF
+toSNF (AEConj x) = toSNF (conjugateAExpr x)
 toSNF (AEVar s) = SNF [SNFTerm 1 [s]]
 toSNF (AEVal i) = SNF [SNFTerm i []]
 toSNF (AEBOp OPlus es) = foldMap toSNF es
@@ -78,8 +85,12 @@ toSNF (AEBOp OTimes es) =
         ([e]) -> e
         e : rest -> foldl expand e rest
 
+applyLaws :: SNFTerm -> SNFTerm
+applyLaws (SNFTerm i ("rt2" : "rt2" : vs)) = SNFTerm (2 * i) vs
+applyLaws x = x
+
 normaliseSNFTerm :: SNFTerm -> SNFTerm
-normaliseSNFTerm (SNFTerm i vs) = SNFTerm i $ sort vs
+normaliseSNFTerm (SNFTerm i vs) = applyLaws $ SNFTerm i $ sort vs
 
 normaliseSNF :: SNF -> SNF
 normaliseSNF (SNF s) =

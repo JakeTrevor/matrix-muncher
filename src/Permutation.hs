@@ -1,11 +1,12 @@
-module Permutation (permGate, permGateInv) where
+module Permutation (idGate, permGate, permGateInv) where
 
 import Data.List (delete, elemIndex)
+import Debug.Trace (trace, traceShow, traceShowId)
 import Matrix
 import MatrixAlgebra
 
 complete :: Int -> [Int] -> [Int]
-complete x is = is ++ [j | j <- [1 .. x], (j `notElem` is)]
+complete x is = is ++ [j | j <- [0 .. (x - 1)], (j `notElem` is)]
 
 swapGate :: MExpr
 swapGate =
@@ -18,13 +19,18 @@ swapGate =
       ]
 
 idGate :: Int -> MExpr
-idGate x = MEVal $ idMat (2 ^ x)
+idGate x
+  | x >= 0 = MEVal $ idMat (2 ^ x)
+  | otherwise = error "cannot construct matrix"
 
 swapAdj :: Int -> Int -> MExpr
-swapAdj dim target = (idGate target) *^* swapGate *^* idGate (dim - target - 2)
+swapAdj dim target =
+  if (dim - (target + 2)) > 0
+    then (idGate target) *^* swapGate *^* idGate (dim - (target + 2))
+    else traceShow target (idGate target) *^* swapGate
 
 shiftRight :: Int -> Int -> MExpr
-shiftRight l dim = MEOp MatTimes [swapAdj dim i | i <- [l .. dim]]
+shiftRight dim target = MEOp MatTimes [swapAdj dim i | i <- [target .. (dim - 1)]]
 
 unsafeIndex :: (Eq a) => a -> [a] -> Int
 unsafeIndex x xs = case x `elemIndex` xs of
@@ -32,15 +38,17 @@ unsafeIndex x xs = case x `elemIndex` xs of
   Just i -> i
 
 permGateInner :: Int -> [Int] -> MExpr
-permGateInner 1 [0] = MEVal $ idMat 2
+permGateInner 0 _ = error "unreachable"
+permGateInner 1 [0] = trace "reached the base case" MEVal $ idMat 2
+permGateInner 1 _ = error "unreachable"
 permGateInner x is =
-  let m = foldl1 max is
+  let m = maximum is
       idx = m `unsafeIndex` is
       rest = delete m is
-   in ((permGateInner (x - 1) rest) *^* (idGate 1)) * (shiftRight idx m)
+   in ((permGateInner (x - 1) rest) *^* (idGate 1)) * (shiftRight m idx)
 
 permGate :: Int -> [Int] -> Mat
-permGate x is = evalMExpr $ permGateInner x $ complete x is
+permGate x is = traceShowId $ evalMExpr $ traceShowId $ permGateInner x $ complete x is
 
 permGateInv :: Int -> [Int] -> Mat
 permGateInv x is = matTrans $ permGate x is

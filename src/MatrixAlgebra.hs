@@ -1,7 +1,9 @@
-module MatrixAlgebra (MExpr (MEVal, MEOp, MEExprOp, MEBlocks), MatOp (MatPlus, MatTimes, MatKronecker), evalMExpr, munch, EMat (EMat), (*^*)) where
+module MatrixAlgebra (MExpr (MEVal, MEOp, MEExprOp, MEBlocks, MEConj), MatOp (MatPlus, MatTimes, MatKronecker), evalMExpr, munch, EMat (EMat), (*^*), (@)) where
 
 import Algebra
-import Data.List (intercalate, intersperse, transpose)
+import Data.List (intercalate, intersperse, transpose, (!?))
+import Data.Maybe (fromMaybe)
+import Debug.Trace (trace, traceShowId)
 import Lib
 import Matrix
 
@@ -18,6 +20,7 @@ data MExpr
     MEOp MatOp [MExpr]
   | MEExprOp BOp AExpr MExpr
   | MEBlocks [[MExpr]]
+  | MEConj MExpr
 
 instance Num MExpr where
   (+) a b = MEOp MatPlus [a, b]
@@ -30,6 +33,9 @@ instance Num MExpr where
 (*^*) :: MExpr -> MExpr -> MExpr
 a *^* b = MEOp MatKronecker [a, b]
 
+(@) :: AExpr -> MExpr -> MExpr
+a @ b = MEExprOp OTimes a b
+
 instance ShowLines MExpr where
   toLines (MEVal m) = toLines m
   -- toLines (MEVar x) = [x]
@@ -39,7 +45,7 @@ instance ShowLines MExpr where
         allLns = intersperse opLn exprLns
         allLns' = transpose $ joinLines $ alignLines allLns
         allLns'' = map (\x -> "│" ++ x ++ "│") allLns'
-        spaces = mkSpaces $ allLns' !! 0
+        spaces = mkSpaces $ fromMaybe "" (allLns' !? 0)
      in ("╭" ++ spaces ++ "╮") : allLns'' ++ [("╰" ++ spaces ++ "╯")]
   toLines (MEExprOp op s ms) =
     let exprLn = [show s]
@@ -54,10 +60,11 @@ instance Show MExpr where
 data EMat = EMat [[SNF]]
 
 evalMExpr :: MExpr -> Mat
+evalMExpr (MEConj x) = conjTrans $ evalMExpr x
 evalMExpr (MEVal x) = x
-evalMExpr (MEOp MatPlus xs) = foldl1 matPlus (map evalMExpr xs)
-evalMExpr (MEOp MatTimes xs) = foldl1 matMul (map evalMExpr xs)
-evalMExpr (MEOp MatKronecker xs) = foldl1 kronecker (map evalMExpr xs)
+evalMExpr (MEOp MatPlus xs) = trace "a" $ foldl1 matPlus (map evalMExpr xs)
+evalMExpr (MEOp MatTimes xs) = trace "b" $ foldl1 matMul (map evalMExpr xs)
+evalMExpr (MEOp MatKronecker xs) = trace "c" $ foldl1 kronecker (map evalMExpr xs)
 evalMExpr (MEExprOp OPlus e x) = scalarAdd e $ evalMExpr x
 evalMExpr (MEExprOp OTimes e x) = scalarMul e $ evalMExpr x
 evalMExpr (MEBlocks xs) = fromBlocks $ map (map evalMExpr) xs

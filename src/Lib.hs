@@ -44,11 +44,11 @@ ensureWidthEven n x xs = padEven padding x xs
 padOut :: [String] -> [String]
 padOut xs = map (ensureWidthEven maxLen ' ') xs
   where
-    maxLen = foldl1 max $ map length xs
+    maxLen = maximum $ map length xs
 
 alignLines :: [[String]] -> [[String]]
 alignLines xs =
-  let tallest = foldl1 max $ map length xs
+  let tallest = maximum $ map length xs
    in map padOut $ map (ensureWidthEven tallest " ") xs
 
 joinLines :: [[String]] -> [String]
@@ -56,7 +56,7 @@ joinLines p = transpose $ map (concat) $ transpose p
 
 padToMax :: [String] -> [String]
 padToMax strs =
-  let maxWidth = foldl1 max (map length strs)
+  let maxWidth = maximum (map length strs)
    in map (ensureWidthR maxWidth ' ') strs
 
 mapBut1 :: (a -> a) -> [a] -> [a]

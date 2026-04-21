@@ -24,6 +24,7 @@ library
       Algebra
       Matrix
       MatrixAlgebra
+      Permutation
       Quantum
       Typst
       Lib
